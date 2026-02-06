@@ -121,8 +121,7 @@ def withdraw(request: WithdrawalRequest, session: Session = Depends(get_session)
     # 2. Check Status
     if customer.status == CustomerStatus.DISABLED:
         raise HTTPException(status_code=403, detail="Access Denied")
-    if customer.status == CustomerStatus.CREDIT_ONLY:
-        raise HTTPException(status_code=403, detail="Only credit")
+    # CREDIT_ONLY users are allowed to withdraw (special case - no balance check)
 
     # 3. Check Withdrawal Limits (Per Transaction)
     if request.amount > 10:
@@ -150,9 +149,10 @@ def withdraw(request: WithdrawalRequest, session: Session = Depends(get_session)
     if not atm:
         raise HTTPException(status_code=404, detail="ATM not found")
 
-    # 6. Check Balances
-    if customer.balance < request.amount:
-        raise HTTPException(status_code=400, detail="Insufficient funds")
+    # 6. Check Balances (Skip for CREDIT_ONLY users - they have unlimited credit)
+    if customer.status != CustomerStatus.CREDIT_ONLY:
+        if customer.balance < request.amount:
+            raise HTTPException(status_code=400, detail="Insufficient funds")
 
     if atm.current_cash < request.amount:
         raise HTTPException(status_code=400, detail="ATM Out of Cash")
