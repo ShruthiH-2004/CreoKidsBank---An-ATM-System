@@ -32,8 +32,8 @@ interface BankState {
     logout: () => void;
 
     fetchLogs: () => Promise<void>;
-    withdraw: (amount: number) => Promise<void>;
-    resetPin: (newPin: string) => Promise<boolean>;
+    withdrawManual: (customerId: number, atmId: number, amount: number) => Promise<boolean>;
+    resetPinManual: (customerId: number, newPin: string) => Promise<boolean>;
 }
 
 export const useBankStore = create<BankState>((set, get) => ({
@@ -88,14 +88,11 @@ export const useBankStore = create<BankState>((set, get) => ({
         }
     },
 
-    withdraw: async (amount) => {
-        const { loggedInCustomer, loggedInAtmId, isAuthenticated } = get();
-        if (!isAuthenticated || !loggedInCustomer || !loggedInAtmId) return;
-
+    withdrawManual: async (customerId: number, atmId: number, amount: number) => {
         try {
             const response = await axios.post('http://localhost:8000/withdraw', {
-                customer_id: loggedInCustomer.id,
-                atm_id: loggedInAtmId,
+                customer_id: customerId,
+                atm_id: atmId,
                 amount: amount
             });
 
@@ -104,30 +101,34 @@ export const useBankStore = create<BankState>((set, get) => ({
                     description: `New Balance: ${response.data.new_balance} CKB`
                 });
 
-                // Update local state immediately
-                set({
-                    loggedInCustomer: { ...loggedInCustomer, balance: response.data.new_balance }
-                });
+                // Update logged in customer balance if it's the same user
+                const { loggedInCustomer } = get();
+                if (loggedInCustomer && loggedInCustomer.id === customerId) {
+                    set({
+                        loggedInCustomer: { ...loggedInCustomer, balance: response.data.new_balance }
+                    });
+                }
+                return true;
             }
         } catch (error: any) {
             if (error.response && error.response.data && error.response.data.detail) {
                 toast.error("Transaction Failed", { description: error.response.data.detail });
+            } else {
+                toast.error("Transaction Failed", { description: "Unknown error" });
             }
         }
+        return false;
     },
 
-    resetPin: async (newPin: string) => {
-        const { loggedInCustomer } = get();
-        if (!loggedInCustomer) return false;
-
+    resetPinManual: async (customerId: number, newPin: string) => {
         try {
             const response = await axios.post('http://localhost:8000/reset-pin', {
-                customer_id: loggedInCustomer.id,
+                customer_id: customerId,
                 new_pin: newPin
             });
 
             if (response.data.status === 'success') {
-                toast.success("PIN Reset Successful", { description: "Your new PIN is now active." });
+                toast.success("PIN Reset Successful", { description: response.data.message });
                 return true;
             }
         } catch (error: any) {

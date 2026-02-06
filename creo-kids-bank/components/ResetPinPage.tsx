@@ -9,7 +9,8 @@ interface ResetPinPageProps {
 }
 
 export default function ResetPinPage({ onBack }: ResetPinPageProps) {
-    const { loggedInCustomer, resetPin } = useBankStore();
+    const { resetPinManual } = useBankStore();
+    const [customerId, setCustomerId] = useState("");
     const [newPin, setNewPin] = useState("");
     const [confirmPin, setConfirmPin] = useState("");
     const [error, setError] = useState("");
@@ -17,6 +18,12 @@ export default function ResetPinPage({ onBack }: ResetPinPageProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+
+        const numCustomerId = parseInt(customerId);
+        if (!numCustomerId || numCustomerId <= 0) {
+            setError("Please enter a valid Customer ID");
+            return;
+        }
 
         if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
             setError("PIN must be exactly 4 digits");
@@ -28,13 +35,11 @@ export default function ResetPinPage({ onBack }: ResetPinPageProps) {
             return;
         }
 
-        const success = await resetPin(newPin);
+        const success = await resetPinManual(numCustomerId, newPin);
         if (success) {
             onBack();
         }
     };
-
-    if (!loggedInCustomer) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-8">
@@ -52,32 +57,22 @@ export default function ResetPinPage({ onBack }: ResetPinPageProps) {
                             <KeyRound className="w-8 h-8" />
                         </div>
                         <h1 className="text-2xl font-bold">Reset PIN</h1>
-                        <p className="text-gray-500 text-sm mt-1">Set a new 4-digit PIN for your account</p>
-                    </div>
-
-                    {/* Customer Info Display */}
-                    <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg mb-6">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <span className="text-gray-500">Customer ID</span>
-                                <p className="font-bold text-lg">{loggedInCustomer.id}</p>
-                            </div>
-                            <div>
-                                <span className="text-gray-500">Name</span>
-                                <p className="font-bold text-lg">{loggedInCustomer.name}</p>
-                            </div>
-                            <div>
-                                <span className="text-gray-500">Card Name</span>
-                                <p className="font-mono">{loggedInCustomer.card_name}</p>
-                            </div>
-                            <div>
-                                <span className="text-gray-500">Balance</span>
-                                <p className="font-bold text-green-600">{loggedInCustomer.balance} CKB</p>
-                            </div>
-                        </div>
+                        <p className="text-gray-500 text-sm mt-1">Enter Customer ID and set a new 4-digit PIN</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer ID</label>
+                            <input
+                                type="number"
+                                value={customerId}
+                                onChange={(e) => setCustomerId(e.target.value)}
+                                placeholder="Enter your Customer ID"
+                                className="w-full p-3 rounded-lg border dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-purple-500 outline-none"
+                                required
+                            />
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New PIN</label>
                             <input
@@ -92,7 +87,7 @@ export default function ResetPinPage({ onBack }: ResetPinPageProps) {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm PIN</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Re-enter PIN</label>
                             <input
                                 type="password"
                                 maxLength={4}
@@ -114,6 +109,8 @@ export default function ResetPinPage({ onBack }: ResetPinPageProps) {
                         >
                             Reset PIN
                         </button>
+
+                        <p className="text-xs text-gray-400 text-center">This will also decrement your daily transaction count</p>
                     </form>
                 </div>
             </div>

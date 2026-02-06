@@ -4,20 +4,12 @@ import { useEffect, useState } from 'react';
 import { useBankStore } from '../store/useBankStore';
 import { LogOut, History, RefreshCcw, Banknote } from 'lucide-react';
 import ResetPinPage from './ResetPinPage';
+import WithdrawPage from './WithdrawPage';
 
 export default function Dashboard() {
-    const { loggedInCustomer, loggedInAtmId, withdraw, logout, fetchLogs, customers } = useBankStore();
-    const [amount, setAmount] = useState<string>("");
+    const { loggedInCustomer, loggedInAtmId, logout, fetchLogs, customers } = useBankStore();
     const [viewLogs, setViewLogs] = useState(false);
-    const [showResetPin, setShowResetPin] = useState(false);
-
-    const handleWithdraw = () => {
-        const numAmount = parseInt(amount);
-        if (numAmount > 0) {
-            withdraw(numAmount);
-            setAmount("");
-        }
-    };
+    const [currentPage, setCurrentPage] = useState<'dashboard' | 'withdraw' | 'resetpin'>('dashboard');
 
     const handleFetchLogs = async () => {
         await fetchLogs();
@@ -26,9 +18,14 @@ export default function Dashboard() {
 
     if (!loggedInCustomer) return null;
 
+    // Show Withdraw Page
+    if (currentPage === 'withdraw') {
+        return <WithdrawPage onBack={() => setCurrentPage('dashboard')} />;
+    }
+
     // Show Reset PIN Page
-    if (showResetPin) {
-        return <ResetPinPage onBack={() => setShowResetPin(false)} />;
+    if (currentPage === 'resetpin') {
+        return <ResetPinPage onBack={() => setCurrentPage('dashboard')} />;
     }
 
     return (
@@ -40,9 +37,9 @@ export default function Dashboard() {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Welcome, {loggedInCustomer.name}</h1>
                         <p className="text-gray-500 text-sm">
-                            Customer ID: <span className="font-mono font-bold">{loggedInCustomer.id}</span> |
+                            Customer ID: <span className="font-mono font-bold text-blue-600">{loggedInCustomer.id}</span> |
                             Card: <span className="font-mono">{loggedInCustomer.card_name}</span> |
-                            ATM ID: {loggedInAtmId}
+                            ATM ID: <span className="font-mono font-bold">{loggedInAtmId}</span>
                         </p>
                     </div>
                     <div className="text-right">
@@ -55,78 +52,47 @@ export default function Dashboard() {
 
                 {/* Main Actions Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Withdraw Section */}
-                    <div className="md:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <Banknote className="w-5 h-5 text-green-500" /> Withdraw Money
-                        </h2>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-4 gap-2">
-                                {[1, 2, 5, 10].map(val => (
-                                    <button
-                                        key={val}
-                                        onClick={() => setAmount(val.toString())}
-                                        className={`py-2 rounded-lg font-bold border transition-all ${amount === val.toString()
-                                                ? 'bg-blue-600 text-white border-blue-600'
-                                                : 'border-gray-200 hover:border-blue-400 dark:border-zinc-700'
-                                            }`}
-                                    >
-                                        {val}
-                                    </button>
-                                ))}
+                    {/* Withdraw Button */}
+                    <button
+                        onClick={() => setCurrentPage('withdraw')}
+                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-green-400 transition-all text-left group"
+                    >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-green-100 text-green-600 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                <Banknote className="w-6 h-6" />
                             </div>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="flex-1 p-3 rounded-lg border dark:bg-zinc-800 dark:border-zinc-700 font-bold text-center text-xl"
-                                    placeholder="Enter amount manually"
-                                    min="1"
-                                    max="10"
-                                />
-                                <button
-                                    onClick={handleWithdraw}
-                                    disabled={!amount || parseInt(amount) <= 0}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 rounded-lg disabled:opacity-50"
-                                >
-                                    Withdraw
-                                </button>
-                            </div>
-                            <p className="text-xs text-gray-400 text-center">Max 10 CKB per transaction | Max 25 CKB daily</p>
+                            <span className="font-bold text-xl">Withdraw</span>
                         </div>
-                    </div>
+                        <p className="text-sm text-gray-500">Enter Customer ID, ATM ID, and Amount to withdraw money.</p>
+                    </button>
 
-                    {/* Side Actions */}
-                    <div className="space-y-6">
-                        {/* Reset PIN */}
-                        <button
-                            onClick={() => setShowResetPin(true)}
-                            className="w-full bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-purple-400 transition-all text-left group"
-                        >
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                                    <RefreshCcw className="w-5 h-5" />
-                                </div>
-                                <span className="font-bold text-lg">Reset PIN</span>
+                    {/* Reset PIN Button */}
+                    <button
+                        onClick={() => setCurrentPage('resetpin')}
+                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-purple-400 transition-all text-left group"
+                    >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                <RefreshCcw className="w-6 h-6" />
                             </div>
-                            <p className="text-xs text-gray-500">Change your 4-digit PIN.</p>
-                        </button>
+                            <span className="font-bold text-xl">Reset PIN</span>
+                        </div>
+                        <p className="text-sm text-gray-500">Enter Customer ID and set a new 4-digit PIN.</p>
+                    </button>
 
-                        {/* Logs Toggle */}
-                        <button
-                            onClick={handleFetchLogs}
-                            className="w-full bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-orange-400 transition-all text-left group"
-                        >
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-orange-100 text-orange-600 rounded-lg group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                                    <History className="w-5 h-5" />
-                                </div>
-                                <span className="font-bold text-lg">View Logs</span>
+                    {/* Logs Button */}
+                    <button
+                        onClick={handleFetchLogs}
+                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-orange-400 transition-all text-left group"
+                    >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-orange-100 text-orange-600 rounded-lg group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                <History className="w-6 h-6" />
                             </div>
-                            <p className="text-xs text-gray-500">Check all customer balances.</p>
-                        </button>
-                    </div>
+                            <span className="font-bold text-xl">View Logs</span>
+                        </div>
+                        <p className="text-sm text-gray-500">Fetch all customer balances.</p>
+                    </button>
                 </div>
 
                 {/* Logs Section */}
@@ -147,7 +113,7 @@ export default function Dashboard() {
                                 <tbody>
                                     {customers.map((c) => (
                                         <tr key={c.id} className="border-b dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
-                                            <td className="p-3 font-mono">{c.id}</td>
+                                            <td className="p-3 font-mono font-bold">{c.id}</td>
                                             <td className="p-3 font-semibold">{c.name}</td>
                                             <td className="p-3 font-mono text-xs">{c.card_name}</td>
                                             <td className="p-3">
