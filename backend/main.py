@@ -202,7 +202,20 @@ def reset_pin(request: ResetPinRequest, session: Session = Depends(get_session))
     # Update PIN
     customer.pin = request.new_pin
     session.add(customer)
+    
+    # Decrement daily transaction count (delete last transaction for today)
+    today = dt.today()
+    last_transaction = session.exec(
+        select(Transaction)
+        .where(Transaction.customer_id == customer.id)
+        .where(Transaction.date == today)
+        .order_by(Transaction.timestamp.desc())
+    ).first()
+    
+    if last_transaction:
+        session.delete(last_transaction)
+    
     session.commit()
     session.refresh(customer)
     
-    return {"status": "success", "message": "PIN reset successfully"}
+    return {"status": "success", "message": "PIN reset successfully and daily transaction count decremented"}
