@@ -91,7 +91,7 @@ export default function Dashboard() {
                         </button>
                     </div>
 
-                    {/* {viewLogs && (
+                    {viewLogs && (
                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4">
                             <h3 className="font-bold text-lg mb-4">ATM Transaction Logs</h3>
                             <div className="overflow-x-auto">
@@ -119,7 +119,7 @@ export default function Dashboard() {
                                 </table>
                             </div>
                         </div>
-                    )} */}
+                    )}
                 </div>
             </div>
         )
@@ -212,7 +212,7 @@ export default function Dashboard() {
                     </button>
 
                     {/* Logs Button */}
-                    <button
+                    {/* <button
                         onClick={handleFetchLogs}
                         className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-orange-400 transition-all text-left group"
                     >
@@ -223,12 +223,12 @@ export default function Dashboard() {
                             <span className="font-bold text-xl">View Logs</span>
                         </div>
                         <p className="text-sm text-gray-500">Check system balances.</p>
-                    </button>
+                    </button> */}
                 </div>
 
 
                 {/* Logs Section */}
-                {viewLogs && (
+                {/* {viewLogs && (
                     <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4">
                         <h3 className="font-bold text-lg mb-4">System Logs (All Customers)</h3>
                         <div className="overflow-x-auto">
@@ -262,7 +262,7 @@ export default function Dashboard() {
                             </table>
                         </div>
                     </div>
-                )}
+                )} */}
 
             </div>
         </div>
