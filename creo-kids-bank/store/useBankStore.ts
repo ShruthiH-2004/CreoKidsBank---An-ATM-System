@@ -19,57 +19,83 @@ interface ATM {
 interface BankState {
     customers: Customer[];
     atms: ATM[];
-    selectedCustomerId: number | null;
-    selectedAtmId: number | null;
+
+    // Auth State
+    isAuthenticated: boolean;
+    loggedInCustomer: Customer | null;
+    loggedInAtmId: number | null;
+
     loading: boolean;
 
-    fetchData: () => Promise<void>;
-    selectCustomer: (id: number) => void;
-    selectATM: (id: number) => void;
+    // Actions
+    login: (location: string, cardName: string, pin: string) => Promise<boolean>;
+    logout: () => void;
+
+    fetchLogs: () => Promise<void>;
     withdraw: (amount: number) => Promise<void>;
-    resetPin: (customerId: number) => Promise<void>;
+    resetPin: (newPin: string) => Promise<boolean>;
 }
 
 export const useBankStore = create<BankState>((set, get) => ({
     customers: [],
     atms: [],
-    selectedCustomerId: null,
-    selectedAtmId: null,
+    isAuthenticated: false,
+    loggedInCustomer: null,
+    loggedInAtmId: null,
     loading: false,
 
-    fetchData: async () => {
+    login: async (location, cardName, pin) => {
         set({ loading: true });
         try {
-            const [customersRes, atmsRes] = await Promise.all([
-                axios.get('http://localhost:8000/customers'),
-                axios.get('http://localhost:8000/atms')
-            ]);
-            set({
-                customers: customersRes.data,
-                atms: atmsRes.data,
-                loading: false
+            const response = await axios.post('http://localhost:8000/login', {
+                atm_location: location,
+                card_name: cardName,
+                pin: pin
             });
+
+            if (response.data.status === 'success') {
+                set({
+                    isAuthenticated: true,
+                    loggedInCustomer: response.data.customer,
+                    loggedInAtmId: response.data.atm_id,
+                    loading: false
+                });
+                toast.success("Welcome back!", { description: `Logged in as ${response.data.customer.name}` });
+                return true;
+            }
+        } catch (error: any) {
+            if (error.response) {
+                toast.error("Login Failed", { description: error.response.data.detail });
+            } else {
+                toast.error("Login Failed", { description: "Server unreachable" });
+            }
+        }
+        set({ loading: false });
+        return false;
+    },
+
+    logout: () => {
+        set({ isAuthenticated: false, loggedInCustomer: null, loggedInAtmId: null });
+        toast.info("Logged out");
+    },
+
+    fetchLogs: async () => {
+        try {
+            const res = await axios.get('http://localhost:8000/customers');
+            set({ customers: res.data });
         } catch (error) {
-            console.error("Failed to fetch data", error);
-            toast.error("Failed to load bank data");
-            set({ loading: false });
+            console.error("Failed to fetch logs");
         }
     },
 
-    selectCustomer: (id) => set({ selectedCustomerId: id }),
-    selectATM: (id) => set({ selectedAtmId: id }),
-
     withdraw: async (amount) => {
-        const { selectedCustomerId, selectedAtmId, fetchData } = get();
-        if (!selectedCustomerId || !selectedAtmId) {
-            toast.error("Please select both a Customer and an ATM");
-            return;
-        }
+        const { loggedInCustomer, loggedInAtmId, isAuthenticated } = get();
+        if (!isAuthenticated || !loggedInCustomer || !loggedInAtmId) return;
 
         try {
             const response = await axios.post('http://localhost:8000/withdraw', {
-                customer_id: selectedCustomerId,
-                atm_id: selectedAtmId,
+                customer_id: loggedInCustomer.id,
+                atm_id: loggedInAtmId,
                 amount: amount
             });
 
@@ -77,27 +103,40 @@ export const useBankStore = create<BankState>((set, get) => ({
                 toast.success(`Withdrew ${amount} CKB`, {
                     description: `New Balance: ${response.data.new_balance} CKB`
                 });
-                // Refresh data to ensure sync
-                await fetchData();
+
+                // Update local state immediately
+                set({
+                    loggedInCustomer: { ...loggedInCustomer, balance: response.data.new_balance }
+                });
             }
         } catch (error: any) {
             if (error.response && error.response.data && error.response.data.detail) {
-                const detail = error.response.data.detail;
-                toast.error("Transaction Failed", { description: detail });
-            } else {
-                toast.error("Transaction Failed", { description: "Unknown error occurred" });
+                toast.error("Transaction Failed", { description: error.response.data.detail });
             }
         }
     },
 
-    resetPin: async (customerId) => {
+    resetPin: async (newPin: string) => {
+        const { loggedInCustomer } = get();
+        if (!loggedInCustomer) return false;
+
         try {
             const response = await axios.post('http://localhost:8000/reset-pin', {
-                customer_id: customerId
+                customer_id: loggedInCustomer.id,
+                new_pin: newPin
             });
-            toast.success("PIN Reset Successful", { description: "Daily limit count decremented." });
-        } catch (error) {
-            toast.error("Reset Failed");
+
+            if (response.data.status === 'success') {
+                toast.success("PIN Reset Successful", { description: "Your new PIN is now active." });
+                return true;
+            }
+        } catch (error: any) {
+            if (error.response && error.response.data && error.response.data.detail) {
+                toast.error("Reset Failed", { description: error.response.data.detail });
+            } else {
+                toast.error("Reset Failed");
+            }
         }
+        return false;
     }
 }));

@@ -2,178 +2,171 @@
 
 import { useEffect, useState } from 'react';
 import { useBankStore } from '../store/useBankStore';
-// Icons
-import { CreditCard, Landmark, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { LogOut, History, RefreshCcw, Banknote } from 'lucide-react';
+import ResetPinPage from './ResetPinPage';
 
 export default function Dashboard() {
-    const { customers, atms, selectedCustomerId, selectedAtmId, fetchData, selectCustomer, selectATM, withdraw, resetPin } = useBankStore();
-    const [amount, setAmount] = useState<number>(0);
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
-    const selectedATM = atms.find(a => a.id === selectedAtmId);
+    const { loggedInCustomer, loggedInAtmId, withdraw, logout, fetchLogs, customers } = useBankStore();
+    const [amount, setAmount] = useState<string>("");
+    const [viewLogs, setViewLogs] = useState(false);
+    const [showResetPin, setShowResetPin] = useState(false);
 
     const handleWithdraw = () => {
-        if (amount > 0) {
-            withdraw(amount);
-            setAmount(0); // Reset input
+        const numAmount = parseInt(amount);
+        if (numAmount > 0) {
+            withdraw(numAmount);
+            setAmount("");
         }
     };
 
+    const handleFetchLogs = async () => {
+        await fetchLogs();
+        setViewLogs(!viewLogs);
+    };
+
+    if (!loggedInCustomer) return null;
+
+    // Show Reset PIN Page
+    if (showResetPin) {
+        return <ResetPinPage onBack={() => setShowResetPin(false)} />;
+    }
+
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
-            <header className="text-center space-y-4">
-                <h1 className="text-4xl font-extrabold tracking-tight text-blue-600 dark:text-blue-400">Creo Kids Bank</h1>
-                <p className="text-lg text-gray-600 dark:text-gray-300">Manage your CKB wisely!</p>
-            </header>
+        <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-8">
+            <div className="max-w-4xl mx-auto space-y-6">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* ATM Selection */}
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <Landmark className="w-6 h-6" /> Select ATM
-                    </h2>
-                    <div className="grid grid-cols-1 gap-4">
-                        {atms.map(atm => (
-                            <div
-                                key={atm.id}
-                                onClick={() => selectATM(atm.id)}
-                                className={`p-6 rounded-xl border-2 cursor-pointer transition-all ${selectedAtmId === atm.id
-                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                    : 'border-gray-200 hover:border-blue-300 dark:border-gray-700'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-xl">{atm.location}</span>
-                                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${atm.current_cash < 20 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
-                                        }`}>
-                                        {atm.current_cash} CKB
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                {/* Header */}
+                <header className="flex justify-between items-center bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Welcome, {loggedInCustomer.name}</h1>
+                        <p className="text-gray-500 text-sm">
+                            Customer ID: <span className="font-mono font-bold">{loggedInCustomer.id}</span> |
+                            Card: <span className="font-mono">{loggedInCustomer.card_name}</span> |
+                            ATM ID: {loggedInAtmId}
+                        </p>
                     </div>
-                </div>
-
-                {/* Customer Selection */}
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <CreditCard className="w-6 h-6" /> Select Card
-                    </h2>
-                    <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
-                        {customers.map(customer => (
-                            <div
-                                key={customer.id}
-                                onClick={() => selectCustomer(customer.id)}
-                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedCustomerId === customer.id
-                                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                                    : 'border-gray-200 hover:border-purple-300 dark:border-gray-700'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <div className="font-bold text-lg">{customer.name}</div>
-                                        <div className="text-sm text-gray-500 uppercase tracking-widest">{customer.card_name}</div>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${customer.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                            customer.status === 'Disabled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                            {customer.status === 'Active' ? `${customer.balance} CKB` : customer.status}
-                                        </span>
-                                        {customer.status !== 'Active' && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); resetPin(customer.id); }}
-                                                className="text-xs text-blue-500 hover:underline flex items-center gap-1"
-                                            >
-                                                <RefreshCcw className="w-3 h-3" /> Reset PIN
-                                            </button>
-                                        )}
-                                        {/* Debug Reset for everyone for testing */}
-                                        {customer.status === 'Active' && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); resetPin(customer.id); }}
-                                                className="text-xs text-xs text-gray-400 hover:text-blue-500"
-                                                title="Reset daily limits"
-                                            >
-                                                Reset Limits
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="text-right">
+                        <div className="text-3xl font-bold text-blue-600">{loggedInCustomer.balance} CKB</div>
+                        <button onClick={logout} className="text-red-500 text-sm hover:underline flex items-center justify-end gap-1 w-full mt-2">
+                            <LogOut className="w-3 h-3" /> Logout
+                        </button>
                     </div>
-                </div>
-            </div>
+                </header>
 
-            {/* Transaction Area */}
-            <section className="bg-white dark:bg-zinc-900 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-zinc-800">
-                <h2 className="text-2xl font-bold mb-6 border-b pb-2">Withdrawal System</h2>
-
-                {!selectedCustomer || !selectedATM ? (
-                    <div className="text-center py-10 text-gray-500">
-                        <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p>Please insert your card (Select User) and choose an ATM.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg">
-                            <div className='flex items-center gap-4'>
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
-                                    {selectedCustomer.name[0]}
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Withdrawing from</p>
-                                    <p className="font-bold">{selectedATM.location}</p>
-                                </div>
+                {/* Main Actions Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Withdraw Section */}
+                    <div className="md:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <Banknote className="w-5 h-5 text-green-500" /> Withdraw Money
+                        </h2>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-4 gap-2">
+                                {[1, 2, 5, 10].map(val => (
+                                    <button
+                                        key={val}
+                                        onClick={() => setAmount(val.toString())}
+                                        className={`py-2 rounded-lg font-bold border transition-all ${amount === val.toString()
+                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                : 'border-gray-200 hover:border-blue-400 dark:border-zinc-700'
+                                            }`}
+                                    >
+                                        {val}
+                                    </button>
+                                ))}
                             </div>
-                            <div className="text-right">
-                                <p className="text-sm text-gray-500">Current Balance</p>
-                                <p className="font-bold text-2xl text-green-600">{selectedCustomer.balance} CKB</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-4">
-                            {[1, 2, 5, 10].map(val => (
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    className="flex-1 p-3 rounded-lg border dark:bg-zinc-800 dark:border-zinc-700 font-bold text-center text-xl"
+                                    placeholder="Enter amount manually"
+                                    min="1"
+                                    max="10"
+                                />
                                 <button
-                                    key={val}
-                                    onClick={() => setAmount(val)}
-                                    className={`py-4 rounded-xl font-bold text-xl transition-all ${amount === val
-                                        ? 'bg-blue-600 text-white shadow-lg scale-105'
-                                        : 'bg-gray-100 hover:bg-gray-200 dark:bg-zinc-700 dark:hover:bg-zinc-600'
-                                        }`}
+                                    onClick={handleWithdraw}
+                                    disabled={!amount || parseInt(amount) <= 0}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 rounded-lg disabled:opacity-50"
                                 >
-                                    {val} CKB
+                                    Withdraw
                                 </button>
-                            ))}
+                            </div>
+                            <p className="text-xs text-gray-400 text-center">Max 10 CKB per transaction | Max 25 CKB daily</p>
                         </div>
+                    </div>
 
-                        <div className="flex gap-4">
-                            <input
-                                type="number"
-                                value={amount}
-                                onChange={(e) => setAmount(Number(e.target.value))}
-                                className="flex-1 p-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 text-xl font-bold text-center bg-transparent"
-                                placeholder="Enter Amount"
-                                min="1"
-                                max="10"
-                            />
-                            <button
-                                onClick={handleWithdraw}
-                                disabled={amount <= 0 || amount > 10}
-                                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xl font-bold rounded-xl shadow-lg transition-transform active:scale-95"
-                            >
-                                WITHDRAW
-                            </button>
+                    {/* Side Actions */}
+                    <div className="space-y-6">
+                        {/* Reset PIN */}
+                        <button
+                            onClick={() => setShowResetPin(true)}
+                            className="w-full bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-purple-400 transition-all text-left group"
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                    <RefreshCcw className="w-5 h-5" />
+                                </div>
+                                <span className="font-bold text-lg">Reset PIN</span>
+                            </div>
+                            <p className="text-xs text-gray-500">Change your 4-digit PIN.</p>
+                        </button>
+
+                        {/* Logs Toggle */}
+                        <button
+                            onClick={handleFetchLogs}
+                            className="w-full bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-orange-400 transition-all text-left group"
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-orange-100 text-orange-600 rounded-lg group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                    <History className="w-5 h-5" />
+                                </div>
+                                <span className="font-bold text-lg">View Logs</span>
+                            </div>
+                            <p className="text-xs text-gray-500">Check all customer balances.</p>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Logs Section */}
+                {viewLogs && (
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4">
+                        <h3 className="font-bold text-lg mb-4">System Logs (All Customers)</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 dark:bg-zinc-800 text-gray-500">
+                                    <tr>
+                                        <th className="p-3 rounded-tl-lg">ID</th>
+                                        <th className="p-3">Name</th>
+                                        <th className="p-3">Card Name</th>
+                                        <th className="p-3">Status</th>
+                                        <th className="p-3 rounded-tr-lg text-right">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {customers.map((c) => (
+                                        <tr key={c.id} className="border-b dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                                            <td className="p-3 font-mono">{c.id}</td>
+                                            <td className="p-3 font-semibold">{c.name}</td>
+                                            <td className="p-3 font-mono text-xs">{c.card_name}</td>
+                                            <td className="p-3">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                                                        c.status === 'DISABLED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                                    }`}>
+                                                    {c.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-right font-bold">{c.balance} CKB</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                        <p className="text-center text-xs text-gray-400">Max 10 CKB per transaction. Max 25 CKB daily.</p>
                     </div>
                 )}
-            </section>
+
+            </div>
         </div>
     );
 }

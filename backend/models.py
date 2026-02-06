@@ -12,6 +12,7 @@ class Customer(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     card_name: str = Field(unique=True, index=True)
+    pin: str = Field(default="1234")
     balance: int
     status: CustomerStatus = Field(default=CustomerStatus.ACTIVE)
 
