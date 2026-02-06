@@ -8,19 +8,23 @@ import WithdrawPage from './WithdrawPage';
 import Image from 'next/image';
 
 export default function Dashboard() {
-    const { loggedInCustomer, loggedInAtmId, logout, fetchLogs, customers } = useBankStore();
+    const { loggedInCustomer, loggedInAtmId, logout, fetchLogs, fetchAtmLogs, customers, atmLogs, userType, loggedInAtmData } = useBankStore();
     const [viewLogs, setViewLogs] = useState(false);
     const [currentPage, setCurrentPage] = useState<'dashboard' | 'withdraw' | 'resetpin'>('dashboard');
 
     const handleFetchLogs = async () => {
-        await fetchLogs();
+        if (userType === 'atm') {
+            await fetchAtmLogs();
+        } else {
+            await fetchLogs();
+        }
         setViewLogs(!viewLogs);
     };
 
-    if (!loggedInCustomer) return null;
+    if (!userType) return null;
 
-    // Show Withdraw Page
-    if (currentPage === 'withdraw') {
+    // Show Withdraw Page (Only for Customers)
+    if (currentPage === 'withdraw' && userType === 'customer') {
         return <WithdrawPage onBack={() => setCurrentPage('dashboard')} />;
     }
 
@@ -28,6 +32,95 @@ export default function Dashboard() {
     if (currentPage === 'resetpin') {
         return <ResetPinPage onBack={() => setCurrentPage('dashboard')} />;
     }
+
+    // ATM ADMIN DASHBOARD
+    if (userType === 'atm' && loggedInAtmData) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-8">
+                <div className="max-w-4xl mx-auto space-y-6">
+                    <header className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 border-l-4 border-l-purple-600">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">ATM Admin Dashboard</h1>
+                                <p className="text-gray-500 text-sm mt-1">
+                                    Location: <span className="font-bold">{loggedInAtmData.location}</span> |
+                                    ID: <span className="font-mono font-bold">{loggedInAtmData.id}</span>
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-sm text-gray-500">Current Cash</span>
+                                <div className="text-4xl font-bold text-green-600">{loggedInAtmData.current_cash} CKB</div>
+                            </div>
+                        </div>
+                        <button onClick={logout} className="text-red-500 text-sm hover:underline flex items-center gap-1 mt-4">
+                            <LogOut className="w-3 h-3" /> Logout
+                        </button>
+                    </header>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <button
+                            onClick={handleFetchLogs}
+                            className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-blue-400 transition-all text-left group"
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-3 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                    <History className="w-6 h-6" />
+                                </div>
+                                <span className="font-bold text-xl">View Transaction Logs</span>
+                            </div>
+                            <p className="text-sm text-gray-500">View detailed withdrawal history for this ATM.</p>
+                        </button>
+
+                        <button
+                            onClick={() => setCurrentPage('resetpin')}
+                            className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-pink-400 transition-all text-left group"
+                        >
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-3 bg-pink-100 text-pink-600 rounded-lg group-hover:bg-pink-600 group-hover:text-white transition-colors">
+                                    <RefreshCcw className="w-6 h-6" />
+                                </div>
+                                <span className="font-bold text-xl">Reset PIN</span>
+                            </div>
+                            <p className="text-sm text-gray-500">Update Customer PINs or Admin PIN.</p>
+                        </button>
+                    </div>
+
+                    {viewLogs && (
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4">
+                            <h3 className="font-bold text-lg mb-4">ATM Transaction Logs</h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-gray-50 dark:bg-zinc-800 text-gray-500">
+                                        <tr>
+                                            <th className="p-3 rounded-tl-lg">Date</th>
+                                            <th className="p-3">Customer ID</th>
+                                            <th className="p-3 text-right">Withdrawn</th>
+                                            <th className="p-3 text-right">Cust. Balance</th>
+                                            <th className="p-3 rounded-tr-lg text-right">ATM Cash</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {atmLogs.map((log) => (
+                                            <tr key={log.id} className="border-b dark:border-zinc-800 last:border-0 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                                                <td className="p-3 text-gray-500">{new Date(log.timestamp).toLocaleString()}</td>
+                                                <td className="p-3 font-mono font-bold text-blue-600">{log.customer_id}</td>
+                                                <td className="p-3 text-right font-bold text-red-500">-{log.amount_withdrawn}</td>
+                                                <td className="p-3 text-right">{log.customer_total_balance}</td>
+                                                <td className="p-3 text-right font-mono">{log.atm_current_cash}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
+    // CUSTOMER DASHBOARD
+    if (!loggedInCustomer) return null; // Safety check
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-8">
@@ -136,7 +229,7 @@ export default function Dashboard() {
                                             <td className="p-3 font-mono text-xs">{c.card_name}</td>
                                             <td className="p-3">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                                                        c.status === 'DISABLED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                                    c.status === 'DISABLED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
                                                     }`}>
                                                     {c.status}
                                                 </span>

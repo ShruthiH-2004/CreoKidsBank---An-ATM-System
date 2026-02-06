@@ -153,13 +153,14 @@ def withdraw(request: WithdrawalRequest, session: Session = Depends(get_session)
     # CREDIT_ONLY users are allowed to withdraw (special case - no balance check)
 
     # 3. Check Withdrawal Limits (Skip all limits for CREDIT_ONLY users - they have unlimited access)
+    today = dt.today()
     if customer.status != CustomerStatus.CREDIT_ONLY:
         # Per Transaction Limit
         if request.amount > 10:
             raise HTTPException(status_code=400, detail="Max 10 CKB per transaction")
 
         # 4. Check Daily Limits
-        today = dt.today()
+        # Today is already defined above
         todays_transactions = session.exec(
             select(Transaction)
             .where(Transaction.customer_id == customer.id)

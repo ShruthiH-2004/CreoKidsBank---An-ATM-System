@@ -22,8 +22,12 @@ interface BankState {
 
     // Auth State
     isAuthenticated: boolean;
+    userType: 'customer' | 'atm' | null;
     loggedInCustomer: Customer | null;
     loggedInAtmId: number | null;
+    loggedInAtmData: ATM | null;
+
+    atmLogs: any[];
 
     loading: boolean;
 
@@ -32,16 +36,21 @@ interface BankState {
     logout: () => void;
 
     fetchLogs: () => Promise<void>;
+    fetchAtmLogs: () => Promise<void>;
     withdrawManual: (customerId: number, atmId: number, amount: number) => Promise<boolean>;
     resetPinManual: (customerId: number, newPin: string) => Promise<boolean>;
+    resetAtmPin: (atmId: number, newPin: string) => Promise<boolean>;
 }
 
 export const useBankStore = create<BankState>((set, get) => ({
     customers: [],
     atms: [],
     isAuthenticated: false,
+    userType: null,
     loggedInCustomer: null,
     loggedInAtmId: null,
+    loggedInAtmData: null,
+    atmLogs: [],
     loading: false,
 
     login: async (location, cardName, pin) => {
@@ -54,13 +63,29 @@ export const useBankStore = create<BankState>((set, get) => ({
             });
 
             if (response.data.status === 'success') {
-                set({
-                    isAuthenticated: true,
-                    loggedInCustomer: response.data.customer,
-                    loggedInAtmId: response.data.atm_id,
-                    loading: false
-                });
-                toast.success("Welcome back!", { description: `Logged in as ${response.data.customer.name}` });
+                const userType = response.data.user_type; // 'customer' or 'atm'
+
+                if (userType === 'atm') {
+                    set({
+                        isAuthenticated: true,
+                        userType: 'atm',
+                        loggedInAtmId: response.data.atm_id,
+                        loggedInAtmData: response.data.atm_data,
+                        loggedInCustomer: null,
+                        loading: false
+                    });
+                    toast.success("Welcome Admin!", { description: response.data.message });
+                } else {
+                    set({
+                        isAuthenticated: true,
+                        userType: 'customer',
+                        loggedInCustomer: response.data.customer,
+                        loggedInAtmId: response.data.atm_id,
+                        loggedInAtmData: response.data.atm,
+                        loading: false
+                    });
+                    toast.success("Welcome!", { description: `Logged in as ${response.data.customer.name}` });
+                }
                 return true;
             }
         } catch (error: any) {
@@ -75,7 +100,14 @@ export const useBankStore = create<BankState>((set, get) => ({
     },
 
     logout: () => {
-        set({ isAuthenticated: false, loggedInCustomer: null, loggedInAtmId: null });
+        set({
+            isAuthenticated: false,
+            userType: null,
+            loggedInCustomer: null,
+            loggedInAtmId: null,
+            loggedInAtmData: null,
+            atmLogs: []
+        });
         toast.info("Logged out");
     },
 
@@ -85,6 +117,17 @@ export const useBankStore = create<BankState>((set, get) => ({
             set({ customers: res.data });
         } catch (error) {
             console.error("Failed to fetch logs");
+        }
+    },
+
+    fetchAtmLogs: async () => {
+        const { loggedInAtmId } = get();
+        if (!loggedInAtmId) return;
+        try {
+            const res = await axios.get(`http://localhost:8000/atm/logs/${loggedInAtmId}`);
+            set({ atmLogs: res.data });
+        } catch (error) {
+            console.error("Failed to fetch ATM logs");
         }
     },
 
@@ -137,6 +180,22 @@ export const useBankStore = create<BankState>((set, get) => ({
             } else {
                 toast.error("Reset Failed");
             }
+        }
+        return false;
+    },
+
+    resetAtmPin: async (atmId: number, newPin: string) => {
+        try {
+            const response = await axios.post('http://localhost:8000/atm/reset-pin', {
+                atm_id: atmId,
+                new_pin: newPin
+            });
+            if (response.data.status === 'success') {
+                toast.success("ATM PIN Updated");
+                return true;
+            }
+        } catch (error: any) {
+            toast.error("Update Failed");
         }
         return false;
     }
