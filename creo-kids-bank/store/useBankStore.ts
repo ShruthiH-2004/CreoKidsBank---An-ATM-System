@@ -40,6 +40,7 @@ interface BankState {
     withdrawManual: (customerId: number, atmId: number, amount: number) => Promise<boolean>;
     resetPinManual: (customerId: number, newPin: string) => Promise<boolean>;
     resetAtmPin: (atmId: number, newPin: string) => Promise<boolean>;
+    depositManual: (customerId: number, atmId: number, amount: number) => Promise<boolean>;
 }
 
 export const useBankStore = create<BankState>((set, get) => ({
@@ -196,6 +197,38 @@ export const useBankStore = create<BankState>((set, get) => ({
             }
         } catch (error: any) {
             toast.error("Update Failed");
+        }
+        return false;
+    },
+
+    depositManual: async (customerId: number, atmId: number, amount: number) => {
+        try {
+            const response = await axios.post('http://localhost:8000/deposit', {
+                customer_id: customerId,
+                atm_id: atmId,
+                amount: amount
+            });
+
+            if (response.data.status === 'success') {
+                toast.success(`Deposited ${amount} CKB`, {
+                    description: `New Balance: ${response.data.new_balance} CKB`
+                });
+
+                // Update logged in customer balance if it's the same user
+                const { loggedInCustomer } = get();
+                if (loggedInCustomer && loggedInCustomer.id === customerId) {
+                    set({
+                        loggedInCustomer: { ...loggedInCustomer, balance: response.data.new_balance }
+                    });
+                }
+                return true;
+            }
+        } catch (error: any) {
+            if (error.response && error.response.data && error.response.data.detail) {
+                toast.error("Deposit Failed", { description: error.response.data.detail });
+            } else {
+                toast.error("Deposit Failed", { description: "Unknown error" });
+            }
         }
         return false;
     }

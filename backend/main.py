@@ -235,6 +235,92 @@ def withdraw(request: WithdrawalRequest, session: Session = Depends(get_session)
         "message": "Withdrawal successful"
     }
 
+class DepositRequest(BaseModel):
+    customer_id: int
+    atm_id: int
+    amount: int
+
+@app.post("/deposit")
+def deposit(request: DepositRequest, session: Session = Depends(get_session)):
+    # 1. Fetch Customer
+    customer = session.get(Customer, request.customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # 2. Fetch ATM
+    atm = session.get(ATM, request.atm_id)
+    if not atm:
+        raise HTTPException(status_code=404, detail="ATM not found")
+
+    # 3. Validate Amount
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    # 4. Execute Deposit
+    customer.balance += request.amount
+    atm.current_cash += request.amount
+    today = dt.today()
+
+    # 5. Log Transaction
+    # We can reuse Transaction table or create a new one. For simplicity, let's use Transaction table
+    # but maybe mark amount as positive? Or is transaction table only for withdrawals?
+    # The requirement says: "Update in tables".
+    # Since Transaction table has 'amount', we can store it. If we want to distinguish, 
+    # we might need a type. But for now, let's just log it. 
+    # Note: Traditional banking ledgers: Credit is +, Debit is -.
+    # Withdrawal logic used "amount" as positive integer and subtracted.
+    # We will log deposit as a transaction.
+    
+    transaction = Transaction(
+        customer_id=customer.id,
+        atm_id=atm.id,
+        amount=request.amount, # You might want to store as negative for withdrawal if mixed, but current schema assumes withdrawal.
+        # Let's verify existing withdrawal logic: "customer.balance -= request.amount".
+        # It doesn't use a type enum.
+        date=today
+    )
+    
+    # Create Detailed Log Record (ATM_Details) for Admin
+    # Schema: "amount_withdrawn". We should probably interpret this column as "Transaction Amount" 
+    # or add a type. For now, since the column is named "amount_withdrawn", 
+    # putting a deposit there might be confusing but it fulfills the logging requirement.
+    # To make it clear in logs, maybe store as negative? 
+    # Or just store as is. Let's store as is.
+    
+    detail_log = ATM_Details(
+        atm_id=atm.id,
+        atm_location=atm.location,
+        customer_id=customer.id,
+        amount_withdrawn= -request.amount, # INDICATING DEPOSIT WITH NEGATIVE "WITHDRAWAL" or just positive?
+        # Let's stick to: Withdrawal = Positive (+), Deposit = Negative (-) in 'amount_withdrawn' column 
+        # so it looks distinct in logs? Or simply rename column?
+        # User asked: "The amount added needs to be added with balancr as and how withdraw was substracting it."
+        # Let's modify the ATM_Details Logic slightly in my mind: 
+        # Withdrawal: Customer -, ATM -
+        # Deposit: Customer +, ATM +
+        # To show this in a simple table, maybe explicit string e.g. "(Deposit) 50" is better handled in UI.
+        # I will store it as negative number in 'amount_withdrawn' to signal it's a deposit (reverse withdrawal).
+        customer_total_balance=customer.balance,
+        atm_current_cash=atm.current_cash,
+        date=today
+    )
+
+    session.add(transaction)
+    session.add(detail_log)
+    session.add(customer)
+    session.add(atm)
+    
+    session.commit()
+    session.refresh(customer)
+    session.refresh(atm)
+
+    return {
+        "status": "success",
+        "new_balance": customer.balance,
+        "atm_balance": atm.current_cash,
+        "message": f"Deposited {request.amount} CKB successfully"
+    }
+
 @app.post("/reset-pin")
 def reset_pin(request: ResetPinRequest, session: Session = Depends(get_session)):
     customer = session.get(Customer, request.customer_id)

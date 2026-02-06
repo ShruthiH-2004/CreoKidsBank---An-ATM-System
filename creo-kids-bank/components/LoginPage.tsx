@@ -49,7 +49,7 @@ export default function LoginPage() {
                             type="text"
                             value={cardName}
                             onChange={(e) => setCardName(e.target.value)}
-                            placeholder="e.g. tom, jerry"
+                            //placeholder="e.g. tom, jerry"
                             className="w-full p-3 rounded-lg border dark:bg-zinc-800 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             required
                         />
@@ -74,7 +74,7 @@ export default function LoginPage() {
                     >
                         {loading ? <Loader2 className="animate-spin w-5 h-5" /> : "Enter ATM"}
                     </button>
-                    {!loading && <p className="text-center text-xs text-gray-400 mt-2">Default PIN is 1234</p>}
+                    {!loading && <p className="text-center text-xs text-gray-400 mt-2"></p>}
                 </form>
             </div>
         </div>

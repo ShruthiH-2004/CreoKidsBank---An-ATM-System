@@ -5,12 +5,13 @@ import { useBankStore } from '../store/useBankStore';
 import { LogOut, History, RefreshCcw, Banknote } from 'lucide-react';
 import ResetPinPage from './ResetPinPage';
 import WithdrawPage from './WithdrawPage';
+import DepositPage from './DepositPage';
 import Image from 'next/image';
 
 export default function Dashboard() {
     const { loggedInCustomer, loggedInAtmId, logout, fetchLogs, fetchAtmLogs, customers, atmLogs, userType, loggedInAtmData } = useBankStore();
     const [viewLogs, setViewLogs] = useState(false);
-    const [currentPage, setCurrentPage] = useState<'dashboard' | 'withdraw' | 'resetpin'>('dashboard');
+    const [currentPage, setCurrentPage] = useState<'dashboard' | 'withdraw' | 'deposit' | 'resetpin'>('dashboard');
 
     const handleFetchLogs = async () => {
         if (userType === 'atm') {
@@ -26,6 +27,11 @@ export default function Dashboard() {
     // Show Withdraw Page (Only for Customers)
     if (currentPage === 'withdraw' && userType === 'customer') {
         return <WithdrawPage onBack={() => setCurrentPage('dashboard')} />;
+    }
+
+    // Show Deposit Page (Only for Customers)
+    if (currentPage === 'deposit' && userType === 'customer') {
+        return <DepositPage onBack={() => setCurrentPage('dashboard')} />;
     }
 
     // Show Reset PIN Page
@@ -85,7 +91,7 @@ export default function Dashboard() {
                         </button>
                     </div>
 
-                    {viewLogs && (
+                    {/* {viewLogs && (
                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4">
                             <h3 className="font-bold text-lg mb-4">ATM Transaction Logs</h3>
                             <div className="overflow-x-auto">
@@ -113,7 +119,7 @@ export default function Dashboard() {
                                 </table>
                             </div>
                         </div>
-                    )}
+                    )} */}
                 </div>
             </div>
         )
@@ -162,7 +168,7 @@ export default function Dashboard() {
                 </header>
 
                 {/* Main Actions Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Withdraw Button */}
                     <button
                         onClick={() => setCurrentPage('withdraw')}
@@ -174,7 +180,21 @@ export default function Dashboard() {
                             </div>
                             <span className="font-bold text-xl">Withdraw</span>
                         </div>
-                        <p className="text-sm text-gray-500">Enter Customer ID, ATM ID, and Amount to withdraw money.</p>
+                        <p className="text-sm text-gray-500">Withdraw money from your account.</p>
+                    </button>
+
+                    {/* Deposit Button */}
+                    <button
+                        onClick={() => setCurrentPage('deposit')}
+                        className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 hover:border-blue-400 transition-all text-left group"
+                    >
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-3 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                <Banknote className="w-6 h-6" />
+                            </div>
+                            <span className="font-bold text-xl">Deposit</span>
+                        </div>
+                        <p className="text-sm text-gray-500">Add funds to your account.</p>
                     </button>
 
                     {/* Reset PIN Button */}
@@ -188,7 +208,7 @@ export default function Dashboard() {
                             </div>
                             <span className="font-bold text-xl">Reset PIN</span>
                         </div>
-                        <p className="text-sm text-gray-500">Enter Customer ID and set a new 4-digit PIN.</p>
+                        <p className="text-sm text-gray-500">Change your PIN.</p>
                     </button>
 
                     {/* Logs Button */}
@@ -202,9 +222,10 @@ export default function Dashboard() {
                             </div>
                             <span className="font-bold text-xl">View Logs</span>
                         </div>
-                        <p className="text-sm text-gray-500">Fetch all customer balances.</p>
+                        <p className="text-sm text-gray-500">Check system balances.</p>
                     </button>
                 </div>
+
 
                 {/* Logs Section */}
                 {viewLogs && (
