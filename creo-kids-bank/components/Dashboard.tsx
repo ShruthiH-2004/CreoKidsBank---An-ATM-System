@@ -5,6 +5,7 @@ import { useBankStore } from '../store/useBankStore';
 import { LogOut, History, RefreshCcw, Banknote } from 'lucide-react';
 import ResetPinPage from './ResetPinPage';
 import WithdrawPage from './WithdrawPage';
+import Image from 'next/image';
 
 export default function Dashboard() {
     const { loggedInCustomer, loggedInAtmId, logout, fetchLogs, customers } = useBankStore();
@@ -32,21 +33,38 @@ export default function Dashboard() {
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-8">
             <div className="max-w-4xl mx-auto space-y-6">
 
-                {/* Header */}
-                <header className="flex justify-between items-center bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Welcome, {loggedInCustomer.name}</h1>
-                        <p className="text-gray-500 text-sm">
-                            Customer ID: <span className="font-mono font-bold text-blue-600">{loggedInCustomer.id}</span> |
-                            Card: <span className="font-mono">{loggedInCustomer.card_name}</span> |
-                            ATM ID: <span className="font-mono font-bold">{loggedInAtmId}</span>
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-3xl font-bold text-blue-600">{loggedInCustomer.balance} CKB</div>
-                        <button onClick={logout} className="text-red-500 text-sm hover:underline flex items-center justify-end gap-1 w-full mt-2">
-                            <LogOut className="w-3 h-3" /> Logout
-                        </button>
+                {/* Header with Image */}
+                <header className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                        {/* Left: User Info */}
+                        <div className="flex-1 text-center md:text-left">
+                            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Welcome, {loggedInCustomer.name}</h1>
+                            <p className="text-gray-500 text-sm mt-1">
+                                Customer ID: <span className="font-mono font-bold text-blue-600">{loggedInCustomer.id}</span> |
+                                Card: <span className="font-mono">{loggedInCustomer.card_name}</span> |
+                                ATM ID: <span className="font-mono font-bold">{loggedInAtmId}</span>
+                            </p>
+                            <div className="mt-4">
+                                <span className="text-sm text-gray-500">Current Balance</span>
+                                <div className="text-4xl font-bold text-blue-600">{loggedInCustomer.balance} CKB</div>
+                            </div>
+                            <button onClick={logout} className="text-red-500 text-sm hover:underline flex items-center gap-1 mt-4 mx-auto md:mx-0">
+                                <LogOut className="w-3 h-3" /> Logout
+                            </button>
+                        </div>
+
+                        {/* Right: Image */}
+                        <div className="flex-shrink-0">
+                            <div className="w-40 h-40 md:w-48 md:h-48 rounded-2xl overflow-hidden border-4 border-blue-100 shadow-lg">
+                                <Image
+                                    src="/Kid_Image.png"
+                                    alt="Creo Kids Bank"
+                                    width={192}
+                                    height={192}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </header>
 
